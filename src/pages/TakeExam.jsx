@@ -1,9 +1,40 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import API from "../services/api"; // <-- Backend API
+import { useParams } from "react-router-dom";
 
 // -------------------------------------------
-// ⭐ UI STYLES (same from your file)
+// ⭐ ALL EXAM QUESTION BANK HERE
+// -------------------------------------------
+const questionBank = {
+  1: [
+    { q: "2 + 5 = ?", options: ["6", "7", "8"], ans: "7" },
+    { q: "Square root of 81?", options: ["7", "9"], ans: "9" }
+  ],
+
+  2: [
+    { q: "Water formula?", options: ["H2O", "CO2"], ans: "H2O" },
+    { q: "Planet known as the Red Planet?", options: ["Mars", "Venus"], ans: "Mars" }
+  ],
+
+  3: [
+    { q: "Choose the noun:", options: ["Run", "Dog"], ans: "Dog" },
+    { q: "Plural of 'Child'?", options: ["Children", "Childs"], ans: "Children" }
+  ],
+
+  4: [
+    { q: "CPU stands for?", options: ["Central Processing Unit", "Computer Personal Unit"], ans: "Central Processing Unit" },
+    { q: "Shortcut for Copy?", options: ["Ctrl + V", "Ctrl + C"], ans: "Ctrl + C" }
+  ],
+
+  5: [
+    { q: "Java is?", options: ["Compiled", "Both compiled & interpreted"], ans: "Both compiled & interpreted" },
+    { q: "Which keyword creates an object?", options: ["new", "class"], ans: "new" }
+  ]
+};
+// -------------------------------------------
+
+
+// -------------------------------------------
+// ⭐ UI STYLES
 // -------------------------------------------
 const styles = {
   page: {
@@ -121,103 +152,72 @@ const styles = {
     width: "100%",
   },
 };
+// -------------------------------------------
+
 
 const TakeExam = () => {
   const { examId } = useParams();
-  const navigate = useNavigate();
 
-  const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [answers, setAnswers] = useState([]);
-  const [score, setScore] = useState(0);
-
+  const [selected, setSelected] = useState("");
   const [timeLeft, setTimeLeft] = useState(60);
+  const [score, setScore] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
 
-  // -------------------------------------------
-  // ⭐ Fetch exam questions from backend
-  // -------------------------------------------
+  // Load questions for that exam
   useEffect(() => {
-    const loadExam = async () => {
-      try {
-        const res = await API.get(`/exam/${examId}`);
-
-        setExam(res.data);
-        setQuestions(res.data.questions);
-        setAnswers(new Array(res.data.questions.length).fill(null));
-        setTimeLeft(res.data.duration * 60 || 60);
-      } catch (err) {
-        console.error(err);
-        alert("Failed to load questions");
-      }
-    };
-
-    loadExam();
+    setQuestions(questionBank[examId]);
   }, [examId]);
 
-  // -------------------------------------------
-  // ⭐ Timer logic
-  // -------------------------------------------
+  // Timer logic
   useEffect(() => {
     if (timeLeft <= 0) {
       finishExam();
       return;
     }
+
     const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
     return () => clearTimeout(timer);
   }, [timeLeft]);
 
-  // -------------------------------------------
-  // ⭐ Finish Exam (Submit to backend)
-  // -------------------------------------------
-  const finishExam = async () => {
-    try {
-      const res = await API.post("/exam/submit", {
-        examId,
-        answers,
-      });
 
-      setScore(res.data.score);
-      setShowPopup(true);
-    } catch (err) {
-      console.error(err);
-      alert("Error submitting exam");
-    }
+  const finishExam = () => {
+    setShowPopup(true);
   };
 
-  // -------------------------------------------
-  // ⭐ Next Question
-  // -------------------------------------------
+
   const nextQuestion = () => {
-    const updated = [...answers];
-    updated[index] = selected;
-    setAnswers(updated);
+    if (selected === questions[index].ans) {
+      setScore(score + 1);
+    }
 
     if (index < questions.length - 1) {
       setIndex(index + 1);
-      setSelected(null);
+      setSelected("");
     } else {
       finishExam();
     }
   };
 
-  if (!exam || questions.length === 0) return <h2>Loading...</h2>;
+
+  if (questions.length === 0) return <h2>Loading...</h2>;
+
 
   return (
     <div style={styles.page}>
-      {/* Score Popup */}
+
+      {/* Popup */}
       {showPopup && (
         <div style={styles.overlay}>
           <div style={styles.popup}>
-            <h2 style={styles.popupTitle}>🎉 Exam Completed!</h2>
+            <h2 style={styles.popupTitle}>🎉 Exam Completed Successfully!</h2>
             <p style={styles.popupScore}>
               You Scored: <b>{score}</b> / {questions.length}
             </p>
             <button
               style={styles.popupBtn}
-              onClick={() => navigate("/exams")}
+              onClick={() => (window.location.href = "/")}
             >
               OK
             </button>
@@ -225,35 +225,35 @@ const TakeExam = () => {
         </div>
       )}
 
-      {/* Main Exam Card */}
+      {/* Main Question Card */}
       <div style={styles.card}>
         <div style={styles.timer}>⏳ Time Left: {timeLeft}s</div>
 
         <h2 style={styles.question}>
-          Question {index + 1}: {questions[index].question}
+          Question {index + 1}: {questions[index].q}
         </h2>
 
-        {[questions[index].option1, questions[index].option2, questions[index].option3, questions[index].option4]
-          .filter(Boolean)
-          .map((opt, idx) => (
-            <div
-              key={idx}
-              style={{
-                ...styles.option,
-                ...(selected === idx + 1 ? styles.selectedOption : {}),
-              }}
-              onClick={() => setSelected(idx + 1)}
-            >
-              <input
-                type="radio"
-                checked={selected === idx + 1}
-                style={{ marginRight: "10px" }}
-              />
-              {opt}
-            </div>
-          ))}
+        {questions[index].options.map((opt) => (
+          <div
+            key={opt}
+            style={{
+              ...styles.option,
+              ...(selected === opt ? styles.selectedOption : {}),
+            }}
+            onClick={() => setSelected(opt)}
+          >
+            <input
+              type="radio"
+              name="option"
+              value={opt}
+              checked={selected === opt}
+              style={{ marginRight: "10px" }}
+            />
+            {opt}
+          </div>
+        ))}
 
-        <button style={styles.btn} onClick={nextQuestion} disabled={selected === null}>
+        <button style={styles.btn} onClick={nextQuestion} disabled={!selected}>
           {index === questions.length - 1 ? "Finish" : "Next"}
         </button>
       </div>
